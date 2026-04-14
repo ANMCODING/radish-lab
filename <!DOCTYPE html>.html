@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Radish Lab: Full Data Analytics</title>
+    <style>
+        :root { --primary: #c2185b; --bg: #121212; --panel: rgba(255, 255, 255, 0.95); }
+        body { margin: 0; overflow: hidden; background: var(--bg); font-family: 'Segoe UI', sans-serif; }
+        
+        .panel {
+            position: absolute; background: var(--panel);
+            padding: 15px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            z-index: 100; transition: border-color 0.4s ease;
+        }
+
+        #input-panel { top: 20px; left: 20px; width: 280px; border-top: 8px solid #22C55E; }
+        #stats-panel { top: 20px; right: 20px; width: 260px; font-family: monospace; border-top: 8px solid #22C55E; }
+        #timeline-panel { bottom: 20px; left: 50%; transform: translateX(-50%); width: 80%; text-align: center; }
+
+        h3 { margin: 0 0 10px 0; font-size: 1em; color: #333; display: flex; align-items: center; gap: 8px; }
+        #status-light { width: 12px; height: 12px; border-radius: 50%; background: #22C55E; display: inline-block; }
+
+        label { display: block; font-size: 0.8em; font-weight: bold; margin-top: 10px; }
+        input[type="range"] { width: 100%; accent-color: var(--primary); cursor: pointer; }
+        
+        button { 
+            width: 100%; padding: 10px; margin-top: 10px; cursor: pointer;
+            background: var(--primary); color: white; border: none; border-radius: 4px; font-weight: bold;
+            position: relative; z-index: 101;
+        }
+        button.secondary { background: #555; }
+        button.download-btn { background: #15803d; }
+
+        .stat-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; border-bottom: 1px solid #ddd; padding-bottom: 2px; }
+        .color-preview { width: 14px; height: 14px; border: 1px solid #333; display: inline-block; vertical-align: middle; margin-right: 5px; }
+        #daily-report { margin-top: 10px; font-size: 0.8em; color: #444; font-style: italic; line-height: 1.4; border-top: 1px dashed #ccc; padding-top: 8px; }
+
+        /* Progress Log Overlay */
+        #log-overlay { 
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.85); z-index: 200; padding: 30px; box-sizing: border-box;
+        }
+        .log-content { background: white; width: 100%; height: 100%; border-radius: 12px; padding: 25px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9em; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background: #f8f8f8; position: sticky; top: 0; }
+
+        .timeline-container { display: flex; align-items: center; gap: 15px; margin-top: 10px; }
+        #timeSlider { flex-grow: 1; }
+        .report-text { font-weight: bold; margin-top: 10px; font-size: 0.9em; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <div id="input-panel" class="panel">
+        <h3><div id="status-light"></div> Environmental Input</h3>
+        <label>Water (ml): <span id="v-water">50</span></label>
+        <input type="range" id="i-water" min="0" max="100" value="50">
+
+        <label>Temp (°C): <span id="v-temp">22</span></label>
+        <input type="range" id="i-temp" min="0" max="40" value="22">
+
+        <label>Sunlight (Hours): <span id="v-sun">8</span></label>
+        <input type="range" id="i-sun" min="0" max="16" value="8">
+
+        <label>Detergent Concentration</label>
+        <select id="i-pol" style="width:100%; padding: 5px;">
+            <option value="0">0 g/L (Control)</option>
+            <option value="0.1">1 g/L (Low)</option>
+            <option value="0.25">2.5 g/L (Med)</option>
+            <option value="0.5">5 g/L (High)</option>
+        </select>
+
+        <button id="submitBtn">LOG DAY & SAVE</button>
+        <button class="secondary" id="viewLogsBtn">VIEW PREVIOUS PROGRESS</button>
+        <button class="download-btn" id="downloadBtn">DOWNLOAD CSV</button>
+        <button class="secondary" style="font-size:0.7em; background:#881337" onclick="clearData()">Wipe All Records</button>
+    </div>
+
+    <div id="stats-panel" class="panel">
+        <h3>Live Analytics</h3>
+        <div class="stat-row"><span>DAY:</span><span id="d-day">0</span></div>
+        <div class="stat-row"><span>HEIGHT:</span><span id="d-height">0</span> cm</div>
+        <div class="stat-row"><span>WEIGHT:</span><span id="d-weight">0.0</span> g</div>
+        <div class="stat-row"><span>HEALTH:</span><span id="d-health">100</span>%</div>
+        <div class="stat-row">
+            <span>LEAF:</span>
+            <span><div id="leaf-preview" class="color-preview"></div><span id="d-hex">#2E7D32</span></span>
+        </div>
+        <div id="condition-report" class="report-text" style="color: #22C55E;">STATUS: OPTIMAL</div>
+        <div id="daily-report">Awaiting log...</div>
+    </div>
+
+    <div id="log-overlay">
+        <div class="log-content">
+            <div style="display:flex; justify-content: space-between; align-items: center;">
+                <h2>Lab Notebook: All Observations</h2>
+                <button onclick="document.getElementById('log-overlay').style.display='none'" style="width:100px;">CLOSE</button>
+            </div>
+            <table>
+                <thead>
+                    <tr><th>Day</th><th>Height (cm)</th><th>Weight (g)</th><th>Health (%)</th><th>Field Notes</th></tr>
+                </thead>
+                <tbody id="log-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="timeline-panel" class="panel">
+        <div class="timeline-container">
+            <button style="width:50px" id="playBtn">▶</button>
+            <input type="range" id="timeSlider" min="0" max="0" value="0">
+            <div id="slider-day" style="font-family: monospace; font-weight: bold;">Day 0</div>
+        </div>
+    </div>
+
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Load progress or start fresh
+        let history = JSON.parse(localStorage.getItem('radish_master_v3')) || [
+            { day: 0, growth: 0, health: 1, height: 0, weight: 0.0, color: "#22C55E", leafHex: "#2E7D32", report: "Experiment started. Seedling is healthy." }
+        ];
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0a0a);
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(6, 6, 12);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        new OrbitControls(camera, renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight.position.set(5, 10, 5);
+        scene.add(dirLight);
+
+        const pot = new THREE.Mesh(new THREE.CylinderGeometry(2, 1.5, 2, 32), new THREE.MeshStandardMaterial({color: 0x2b1d19}));
+        pot.position.y = -1; scene.add(pot);
+        const plantGroup = new THREE.Group(); scene.add(plantGroup);
+        const bulb = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 32), new THREE.MeshStandardMaterial({ color: 0xc2185b }));
+        plantGroup.add(bulb);
+        let leaves = [];
+
+        function updatePlantVisuals(state) {
+            const s = state.growth * 1.5 + 0.01;
+            bulb.scale.set(s, s * 1.2, s); bulb.position.y = state.growth * 0.5;
+            leaves.forEach(l => plantGroup.remove(l)); leaves = [];
+            const leafCount = Math.floor(state.growth * 10);
+            for(let i=0; i < leafCount; i++) {
+                const lGroup = new THREE.Group();
+                const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, 1.2), new THREE.MeshStandardMaterial({color: 0x4caf50}));
+                const blade = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 8), new THREE.MeshStandardMaterial({color: state.leafHex}));
+                blade.scale.set(1, 0.1, 1.8); blade.position.y = 1; stem.position.y = 0.5;
+                lGroup.add(stem); lGroup.add(blade);
+                lGroup.rotation.y = (i / leafCount) * Math.PI * 2;
+                lGroup.rotation.z = 0.3 + (1 - state.health) * 1.2;
+                lGroup.position.y = bulb.position.y + 0.1; lGroup.scale.set(s, s, s);
+                plantGroup.add(lGroup); leaves.push(lGroup);
+            }
+            document.getElementById('d-day').innerText = state.day;
+            document.getElementById('d-height').innerText = state.height;
+            document.getElementById('d-weight').innerText = state.weight;
+            document.getElementById('d-health').innerText = Math.round(state.health * 100);
+            document.getElementById('d-hex').innerText = state.leafHex.toUpperCase();
+            document.getElementById('leaf-preview').style.backgroundColor = state.leafHex;
+            document.getElementById('slider-day').innerText = "Day " + state.day;
+            document.getElementById('daily-report').innerText = state.report;
+            
+            const color = state.color || "#22C55E";
+            document.getElementById('status-light').style.backgroundColor = color;
+            document.getElementById('input-panel').style.borderColor = color;
+            document.getElementById('stats-panel').style.borderColor = color;
+            document.getElementById('condition-report').innerText = state.health > 0.8 ? "STATUS: OPTIMAL" : (state.health > 0.4 ? "STATUS: STRESSED" : "STATUS: CRITICAL");
+            document.getElementById('condition-report').style.color = color;
+        }
+
+        document.getElementById('submitBtn').addEventListener('click', () => {
+            const last = history[history.length - 1];
+            if (last.health <= 0) return alert("Specimen has expired.");
+
+            const w = parseFloat(document.getElementById('i-water').value);
+            const t = parseFloat(document.getElementById('i-temp').value);
+            const p = parseFloat(document.getElementById('i-pol').value);
+            const s_hrs = parseFloat(document.getElementById('i-sun').value);
+
+            const healthImpact = (p * 0.35) + (Math.abs(22-t) > 12 ? 0.1 : 0);
+            const newHealth = Math.max(0, last.health - healthImpact);
+            const growthDelta = (w/100) * (s_hrs/12) * (1-p) * 0.15;
+            const newGrowth = Math.min(1, last.growth + growthDelta);
+
+            let pDesc = p > 0 ? `Detergent at ${p*10}g/L is harming root osmosis.` : "Absorbing pure water effectively.";
+            let tDesc = t > 30 ? "Heat stress is increasing evaporation." : "Temperature is within normal bounds.";
+            let hDesc = newHealth < 0.5 ? "Chlorosis and tissue death observed." : "Specimen maintains leaf turgidity.";
+
+            let reportColor = "#22C55E"; 
+            if (newHealth < 0.4) reportColor = "#EF4444"; 
+            else if (newHealth < 0.8) reportColor = "#FACC15";
+
+            history.push({
+                day: last.day + 1, growth: newGrowth, health: newHealth,
+                height: (newGrowth * 18).toFixed(1), weight: (newGrowth * newHealth * 25).toFixed(2),
+                color: reportColor, leafHex: "#" + new THREE.Color(0x2e7d32).lerp(new THREE.Color(0x8d6e63), 1 - newHealth).getHexString(),
+                report: `${pDesc} ${tDesc} ${hDesc}`
+            });
+
+            localStorage.setItem('radish_master_v3', JSON.stringify(history));
+            document.getElementById('timeSlider').max = history.length - 1;
+            document.getElementById('timeSlider').value = history.length - 1;
+            updatePlantVisuals(history[history.length - 1]);
+        });
+
+        document.getElementById('viewLogsBtn').onclick = () => {
+            const body = document.getElementById('log-body');
+            body.innerHTML = history.map(h => `<tr><td>${h.day}</td><td>${h.height}</td><td>${h.weight}</td><td>${Math.round(h.health*100)}%</td><td>${h.report}</td></tr>`).join('');
+            document.getElementById('log-overlay').style.display = 'block';
+        };
+
+        document.getElementById('downloadBtn').onclick = () => {
+            let csv = "Day,Height(cm),Weight(g),Health(%),Field Notes\n";
+            history.forEach(h => { csv += `${h.day},${h.height},${h.weight},${Math.round(h.health*100)},"${h.report}"\n`; });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = "radish_lab_data.csv";
+            a.click();
+        };
+
+        window.clearData = () => { if(confirm("Delete all history?")) { localStorage.clear(); location.reload(); } };
+        
+        ['water', 'temp', 'sun'].forEach(id => {
+            document.getElementById('i-'+id).oninput = (e) => document.getElementById('v-'+id).innerText = e.target.value;
+        });
+
+        document.getElementById('timeSlider').oninput = (e) => updatePlantVisuals(history[e.target.value]);
+        document.getElementById('timeSlider').max = history.length - 1;
+        updatePlantVisuals(history[history.length - 1]);
+        function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
+        animate();
+    </script>
+</body>
+</html>
