@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Radish Lab: Full Data Analytics</title>
+    <title>Radish Lab: Comparative Toxicity Study</title>
     <style>
         :root { --primary: #c2185b; --bg: #121212; --panel: rgba(255, 255, 255, 0.95); }
         body { margin: 0; overflow: hidden; background: var(--bg); font-family: 'Segoe UI', sans-serif; }
@@ -13,80 +13,103 @@
             z-index: 100; transition: border-color 0.4s ease;
         }
 
-        #input-panel { top: 20px; left: 20px; width: 280px; border-top: 8px solid #22C55E; }
-        #stats-panel { top: 20px; right: 20px; width: 260px; font-family: monospace; border-top: 8px solid #22C55E; }
+        #input-panel { top: 20px; left: 20px; width: 280px; border-top: 8px solid #22C55E; max-height: 90vh; overflow-y: auto; }
+        #stats-panel { top: 20px; right: 20px; width: 280px; font-family: monospace; border-top: 8px solid #22C55E; max-height: 90vh; overflow-y: auto;}
         #timeline-panel { bottom: 20px; left: 50%; transform: translateX(-50%); width: 80%; text-align: center; }
 
-        h3 { margin: 0 0 10px 0; font-size: 1em; color: #333; display: flex; align-items: center; gap: 8px; }
+        h3 { margin: 0 0 10px 0; font-size: 0.95em; color: #333; display: flex; align-items: center; gap: 8px; text-transform: uppercase; }
         #status-light { width: 12px; height: 12px; border-radius: 50%; background: #22C55E; display: inline-block; }
 
-        label { display: block; font-size: 0.8em; font-weight: bold; margin-top: 10px; }
-        input[type="range"] { width: 100%; accent-color: var(--primary); cursor: pointer; }
+        label { display: block; font-size: 0.75em; font-weight: bold; margin-top: 8px; color: #444;}
+        input[type="range"], select { width: 100%; accent-color: var(--primary); cursor: pointer; margin-bottom: 4px; }
         
         button { 
             width: 100%; padding: 10px; margin-top: 10px; cursor: pointer;
             background: var(--primary); color: white; border: none; border-radius: 4px; font-weight: bold;
-            position: relative; z-index: 101;
+            position: relative; z-index: 101; font-size: 0.85em;
         }
         button.secondary { background: #555; }
         button.download-btn { background: #15803d; }
 
-        .stat-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; border-bottom: 1px solid #ddd; padding-bottom: 2px; }
-        .color-preview { width: 14px; height: 14px; border: 1px solid #333; display: inline-block; vertical-align: middle; margin-right: 5px; }
-        #daily-report { margin-top: 10px; font-size: 0.8em; color: #444; font-style: italic; line-height: 1.4; border-top: 1px dashed #ccc; padding-top: 8px; }
+        .stat-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; border-bottom: 1px solid #ddd; padding-bottom: 2px; font-size: 0.85em; }
+        .color-preview { width: 12px; height: 12px; border: 1px solid #333; display: inline-block; vertical-align: middle; margin-right: 4px; }
+        #daily-report { margin-top: 10px; font-size: 0.75em; color: #444; font-style: italic; line-height: 1.4; border-top: 1px dashed #ccc; padding-top: 8px; }
+
+        .disclaimer { font-size: 0.6em; color: #666; margin-top: 15px; line-height: 1.2; text-align: justify; }
 
         /* Progress Log Overlay */
         #log-overlay { 
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.85); z-index: 200; padding: 30px; box-sizing: border-box;
+            background: rgba(0,0,0,0.85); z-index: 200; padding: 20px; box-sizing: border-box;
         }
-        .log-content { background: white; width: 100%; height: 100%; border-radius: 12px; padding: 25px; overflow-y: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9em; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        .log-content { background: white; width: 100%; height: 100%; border-radius: 12px; padding: 20px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.8em; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background: #f8f8f8; position: sticky; top: 0; }
 
-        .timeline-container { display: flex; align-items: center; gap: 15px; margin-top: 10px; }
+        .timeline-container { display: flex; align-items: center; gap: 15px; margin-top: 5px; }
         #timeSlider { flex-grow: 1; }
-        .report-text { font-weight: bold; margin-top: 10px; font-size: 0.9em; text-align: center; }
+        .report-text { font-weight: bold; margin-top: 10px; font-size: 0.85em; text-align: center; }
     </style>
 </head>
 <body>
 
     <div id="input-panel" class="panel">
-        <h3><div id="status-light"></div> Environmental Input</h3>
-        <label>Water (ml): <span id="v-water">50</span></label>
-        <input type="range" id="i-water" min="0" max="100" value="50">
-
-        <label>Temp (°C): <span id="v-temp">22</span></label>
-        <input type="range" id="i-temp" min="0" max="40" value="22">
-
-        <label>Sunlight (Hours): <span id="v-sun">8</span></label>
-        <input type="range" id="i-sun" min="0" max="16" value="8">
-
-        <label>Detergent Concentration</label>
-        <select id="i-pol" style="width:100%; padding: 5px;">
-            <option value="0">0 g/L (Control)</option>
-            <option value="0.1">1 g/L (Low)</option>
-            <option value="0.25">2.5 g/L (Med)</option>
-            <option value="0.5">5 g/L (High)</option>
+        <h3><div id="status-light"></div> Variables & Inputs</h3>
+        
+        <label>Detergent Brand</label>
+        <select id="i-brand" style="padding: 4px;">
+            <option value="Control">None (Control)</option>
+            <option value="Tide">Tide (Conventional)</option>
+            <option value="SeventhGen">Seventh Gen (Plant-Based)</option>
         </select>
 
-        <button id="submitBtn">LOG DAY & SAVE</button>
-        <button class="secondary" id="viewLogsBtn">VIEW PREVIOUS PROGRESS</button>
+        <label>Concentration</label>
+        <select id="i-pol" style="padding: 4px;">
+            <option value="0">0%</option>
+            <option value="0.1">0.1%</option>
+            <option value="0.25">0.25%</option>
+            <option value="0.5">0.5%</option>
+        </select>
+
+        <label>Surfactant Composition: <span id="v-surf">15</span>%</label>
+        <input type="range" id="i-surf" min="0" max="40" value="15">
+
+        <div style="border-top: 1px solid #ddd; margin-top: 10px; padding-top: 5px;">
+            <label>Water (ml): <span id="v-water">50</span></label>
+            <input type="range" id="i-water" min="0" max="100" value="50">
+
+            <label>Temp (°C): <span id="v-temp">22</span></label>
+            <input type="range" id="i-temp" min="0" max="40" value="22">
+        </div>
+
+        <button id="submitBtn">LOG TRIAL DAY & SAVE</button>
+        <button class="secondary" id="viewLogsBtn">VIEW FULL HISTORY</button>
         <button class="download-btn" id="downloadBtn">DOWNLOAD CSV</button>
-        <button class="secondary" style="font-size:0.7em; background:#881337" onclick="clearData()">Wipe All Records</button>
+        <button class="secondary" style="font-size:0.7em; background:#881337" onclick="clearData()">Wipe Lab Data</button>
+
+        <div class="disclaimer">
+            *Disclaimer: Results reflect comparative toxicity solely within the parameters of this specific simulated plant-based model. They do not represent overall environmental or human toxicity standards.
+        </div>
     </div>
 
     <div id="stats-panel" class="panel">
         <h3>Live Analytics</h3>
         <div class="stat-row"><span>DAY:</span><span id="d-day">0</span></div>
         <div class="stat-row"><span>HEIGHT:</span><span id="d-height">0</span> cm</div>
-        <div class="stat-row"><span>WEIGHT:</span><span id="d-weight">0.0</span> g</div>
+        <div class="stat-row"><span>LEAF COUNT:</span><span id="d-leaves">0</span></div>
         <div class="stat-row"><span>HEALTH:</span><span id="d-health">100</span>%</div>
         <div class="stat-row">
-            <span>LEAF:</span>
-            <span><div id="leaf-preview" class="color-preview"></div><span id="d-hex">#2E7D32</span></span>
+            <span>COLOR [1-5]:</span>
+            <span><div id="leaf-preview" class="color-preview"></div><span id="d-rating">5</span></span>
         </div>
+        <div class="stat-row"><span>CONDITION:</span><span id="d-cond">Healthy</span></div>
+        <div class="stat-row"><span>WATER pH:</span><span id="d-ph">7.0</span></div>
+        <div class="stat-row"><span>TURBIDITY:</span><span id="d-turb">Clear</span></div>
+        <div class="stat-row" style="background:#f4f4f4; padding: 4px; font-weight:bold;">
+            <span>TOXICITY SCORE:</span><span id="d-score" style="color:#c2185b">0</span>
+        </div>
+        
         <div id="condition-report" class="report-text" style="color: #22C55E;">STATUS: OPTIMAL</div>
         <div id="daily-report">Awaiting log...</div>
     </div>
@@ -94,12 +117,15 @@
     <div id="log-overlay">
         <div class="log-content">
             <div style="display:flex; justify-content: space-between; align-items: center;">
-                <h2>Lab Notebook: All Observations</h2>
+                <h2>Lab Notebook: Toxicity Comparison</h2>
                 <button onclick="document.getElementById('log-overlay').style.display='none'" style="width:100px;">CLOSE</button>
             </div>
             <table>
                 <thead>
-                    <tr><th>Day</th><th>Height (cm)</th><th>Weight (g)</th><th>Health (%)</th><th>Field Notes</th></tr>
+                    <tr>
+                        <th>Day</th><th>Brand</th><th>Conc.</th><th>Surf.%</th>
+                        <th>Height</th><th>Leaves</th><th>Color(1-5)</th><th>Score</th><th>Notes</th>
+                    </tr>
                 </thead>
                 <tbody id="log-body"></tbody>
             </table>
@@ -122,9 +148,8 @@
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        // Load progress or start fresh
-        let history = JSON.parse(localStorage.getItem('radish_master_v3')) || [
-            { day: 0, growth: 0, health: 1, height: 0, weight: 0.0, color: "#22C55E", leafHex: "#2E7D32", report: "Experiment started. Seedling is healthy." }
+        let history = JSON.parse(localStorage.getItem('radish_comparative_v1')) || [
+            { day: 0, growth: 0, health: 1, height: 0, leaves: 0, color: "#22C55E", leafHex: "#2E7D32", rating: 5, cond: "Healthy", ph: "7.0", turb: "Clear", score: 0, brand: "Control", conc: "0%", surf: 0, report: "Trial initialized." }
         ];
 
         const scene = new THREE.Scene();
@@ -146,29 +171,35 @@
         const plantGroup = new THREE.Group(); scene.add(plantGroup);
         const bulb = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 32), new THREE.MeshStandardMaterial({ color: 0xc2185b }));
         plantGroup.add(bulb);
-        let leaves = [];
+        let leafMeshes = [];
 
         function updatePlantVisuals(state) {
             const s = state.growth * 1.5 + 0.01;
             bulb.scale.set(s, s * 1.2, s); bulb.position.y = state.growth * 0.5;
-            leaves.forEach(l => plantGroup.remove(l)); leaves = [];
-            const leafCount = Math.floor(state.growth * 10);
-            for(let i=0; i < leafCount; i++) {
+            leafMeshes.forEach(l => plantGroup.remove(l)); leafMeshes = [];
+            
+            for(let i=0; i < state.leaves; i++) {
                 const lGroup = new THREE.Group();
                 const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, 1.2), new THREE.MeshStandardMaterial({color: 0x4caf50}));
                 const blade = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 8), new THREE.MeshStandardMaterial({color: state.leafHex}));
                 blade.scale.set(1, 0.1, 1.8); blade.position.y = 1; stem.position.y = 0.5;
                 lGroup.add(stem); lGroup.add(blade);
-                lGroup.rotation.y = (i / leafCount) * Math.PI * 2;
-                lGroup.rotation.z = 0.3 + (1 - state.health) * 1.2;
+                lGroup.rotation.y = (i / state.leaves) * Math.PI * 2;
+                lGroup.rotation.z = 0.3 + (1 - state.health) * 1.5; // Droop
                 lGroup.position.y = bulb.position.y + 0.1; lGroup.scale.set(s, s, s);
-                plantGroup.add(lGroup); leaves.push(lGroup);
+                plantGroup.add(lGroup); leafMeshes.push(lGroup);
             }
+            
             document.getElementById('d-day').innerText = state.day;
             document.getElementById('d-height').innerText = state.height;
-            document.getElementById('d-weight').innerText = state.weight;
+            document.getElementById('d-leaves').innerText = state.leaves;
             document.getElementById('d-health').innerText = Math.round(state.health * 100);
-            document.getElementById('d-hex').innerText = state.leafHex.toUpperCase();
+            document.getElementById('d-rating').innerText = state.rating;
+            document.getElementById('d-cond').innerText = state.cond;
+            document.getElementById('d-ph').innerText = state.ph;
+            document.getElementById('d-turb').innerText = state.turb;
+            document.getElementById('d-score').innerText = state.score;
+
             document.getElementById('leaf-preview').style.backgroundColor = state.leafHex;
             document.getElementById('slider-day').innerText = "Day " + state.day;
             document.getElementById('daily-report').innerText = state.report;
@@ -185,32 +216,52 @@
             const last = history[history.length - 1];
             if (last.health <= 0) return alert("Specimen has expired.");
 
+            const brand = document.getElementById('i-brand').value;
+            const p = parseFloat(document.getElementById('i-pol').value);
+            const surf = parseFloat(document.getElementById('i-surf').value);
             const w = parseFloat(document.getElementById('i-water').value);
             const t = parseFloat(document.getElementById('i-temp').value);
-            const p = parseFloat(document.getElementById('i-pol').value);
-            const s_hrs = parseFloat(document.getElementById('i-sun').value);
 
-            const healthImpact = (p * 0.35) + (Math.abs(22-t) > 12 ? 0.1 : 0);
+            // SIMULATION SCIENCE: Toxicity is driven purely by composition, not brand assumptions.
+            // Effective toxicity = Concentration * (Surfactant Ratio / 100)
+            const effectiveToxicity = (brand === "Control" || p === 0) ? 0 : p * (surf / 100);
+            
+            const healthImpact = (effectiveToxicity * 3.5) + (Math.abs(22-t) > 12 ? 0.08 : 0) + (w < 20 ? 0.05 : 0);
             const newHealth = Math.max(0, last.health - healthImpact);
-            const growthDelta = (w/100) * (s_hrs/12) * (1-p) * 0.15;
-            const newGrowth = Math.min(1, last.growth + growthDelta);
+            
+            const growthDelta = (w/100) * (1 - effectiveToxicity*2) * 0.12;
+            const newGrowth = Math.max(0, Math.min(1, last.growth + growthDelta));
 
-            let pDesc = p > 0 ? `Detergent at ${p*10}g/L is harming root osmosis.` : "Absorbing pure water effectively.";
-            let tDesc = t > 30 ? "Heat stress is increasing evaporation." : "Temperature is within normal bounds.";
-            let hDesc = newHealth < 0.5 ? "Chlorosis and tissue death observed." : "Specimen maintains leaf turgidity.";
+            // Generate Output Variables
+            const newHeight = (newGrowth * 18).toFixed(1);
+            const newLeaves = Math.max(0, Math.floor(newGrowth * 10) - (newHealth < 0.3 ? 2 : 0)); // Leaves drop off if dying
+            
+            const rating = Math.max(1, Math.ceil(newHealth * 5));
+            let cond = "Healthy";
+            if(newHealth < 0.4) cond = "Wilting/Spots";
+            else if(newHealth < 0.8) cond = "Dry Edges";
+
+            const phCalc = 7.0 + (effectiveToxicity * 8); // Surfactants increase alkalinity
+            const turbCalc = effectiveToxicity === 0 ? "Clear" : (effectiveToxicity > 0.05 ? "Opaque" : "Cloudy");
+            const toxScore = Math.round((1 - newHealth) * 100);
+
+            // Report logic
+            let pDesc = effectiveToxicity > 0 ? `Surfactant presence (${surf}%) altered water to pH ${phCalc.toFixed(1)}, causing tissue stress.` : "Control conditions maintained cell integrity.";
+            let hDesc = newHealth < 0.5 ? "Chlorosis and leaf shedding observed." : "Vascular systems functioning normally.";
 
             let reportColor = "#22C55E"; 
             if (newHealth < 0.4) reportColor = "#EF4444"; 
             else if (newHealth < 0.8) reportColor = "#FACC15";
 
             history.push({
-                day: last.day + 1, growth: newGrowth, health: newHealth,
-                height: (newGrowth * 18).toFixed(1), weight: (newGrowth * newHealth * 25).toFixed(2),
+                day: last.day + 1, brand: brand, conc: p+"%", surf: surf,
+                growth: newGrowth, health: newHealth, height: newHeight, leaves: newLeaves,
                 color: reportColor, leafHex: "#" + new THREE.Color(0x2e7d32).lerp(new THREE.Color(0x8d6e63), 1 - newHealth).getHexString(),
-                report: `${pDesc} ${tDesc} ${hDesc}`
+                rating: rating, cond: cond, ph: phCalc.toFixed(1), turb: turbCalc, score: toxScore,
+                report: `${pDesc} ${hDesc}`
             });
 
-            localStorage.setItem('radish_master_v3', JSON.stringify(history));
+            localStorage.setItem('radish_comparative_v1', JSON.stringify(history));
             document.getElementById('timeSlider').max = history.length - 1;
             document.getElementById('timeSlider').value = history.length - 1;
             updatePlantVisuals(history[history.length - 1]);
@@ -218,23 +269,26 @@
 
         document.getElementById('viewLogsBtn').onclick = () => {
             const body = document.getElementById('log-body');
-            body.innerHTML = history.map(h => `<tr><td>${h.day}</td><td>${h.height}</td><td>${h.weight}</td><td>${Math.round(h.health*100)}%</td><td>${h.report}</td></tr>`).join('');
+            body.innerHTML = history.map(h => `<tr>
+                <td>${h.day}</td><td>${h.brand}</td><td>${h.conc}</td><td>${h.surf}%</td>
+                <td>${h.height}</td><td>${h.leaves}</td><td>${h.rating}</td><td><b>${h.score}</b></td><td>${h.report}</td>
+            </tr>`).join('');
             document.getElementById('log-overlay').style.display = 'block';
         };
 
         document.getElementById('downloadBtn').onclick = () => {
-            let csv = "Day,Height(cm),Weight(g),Health(%),Field Notes\n";
-            history.forEach(h => { csv += `${h.day},${h.height},${h.weight},${Math.round(h.health*100)},"${h.report}"\n`; });
+            let csv = "Day,Brand,Concentration,Surfactant(%),Height(cm),Leaves,Health(%),ColorRating,Score,pH,Turbidity,Notes\n";
+            history.forEach(h => { csv += `${h.day},${h.brand},${h.conc},${h.surf},${h.height},${h.leaves},${Math.round(h.health*100)},${h.rating},${h.score},${h.ph},${h.turb},"${h.report}"\n`; });
             const blob = new Blob([csv], { type: 'text/csv' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = "radish_lab_data.csv";
+            a.download = "comparative_toxicity_data.csv";
             a.click();
         };
 
         window.clearData = () => { if(confirm("Delete all history?")) { localStorage.clear(); location.reload(); } };
         
-        ['water', 'temp', 'sun'].forEach(id => {
+        ['water', 'temp', 'surf'].forEach(id => {
             document.getElementById('i-'+id).oninput = (e) => document.getElementById('v-'+id).innerText = e.target.value;
         });
 
