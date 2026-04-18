@@ -13,7 +13,7 @@
             z-index: 100; transition: border-color 0.4s ease;
         }
 
-        #input-panel { top: 20px; left: 20px; width: 280px; border-top: 8px solid #22C55E; max-height: 90vh; overflow-y: auto; }
+        #input-panel { top: 20px; left: 20px; width: 290px; border-top: 8px solid #22C55E; max-height: 90vh; overflow-y: auto; }
         #stats-panel { top: 20px; right: 20px; width: 280px; font-family: monospace; border-top: 8px solid #22C55E; max-height: 90vh; overflow-y: auto;}
         #timeline-panel { bottom: 20px; left: 50%; transform: translateX(-50%); width: 80%; text-align: center; }
 
@@ -26,18 +26,18 @@
         button { 
             width: 100%; padding: 10px; margin-top: 10px; cursor: pointer;
             background: var(--primary); color: white; border: none; border-radius: 4px; font-weight: bold;
-            position: relative; z-index: 101; font-size: 0.85em;
+            font-size: 0.85em;
         }
         button.secondary { background: #555; }
         button.download-btn { background: #15803d; }
 
         .stat-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; border-bottom: 1px solid #ddd; padding-bottom: 2px; font-size: 0.85em; }
         .color-preview { width: 12px; height: 12px; border: 1px solid #333; display: inline-block; vertical-align: middle; margin-right: 4px; }
-        #daily-report { margin-top: 10px; font-size: 0.75em; color: #444; font-style: italic; line-height: 1.4; border-top: 1px dashed #ccc; padding-top: 8px; }
+        #daily-report { margin-top: 10px; font-size: 0.8em; color: #222; font-weight: 500; line-height: 1.4; border-top: 2px solid #eee; padding-top: 8px; }
 
-        .disclaimer { font-size: 0.6em; color: #666; margin-top: 15px; line-height: 1.2; text-align: justify; }
-
-        /* Progress Log Overlay */
+        .control-tag { font-size: 0.7em; color: #15803d; background: #dcfce7; padding: 2px 6px; border-radius: 3px; display: inline-block; margin-bottom: 5px; font-weight: bold; }
+        .fixed-val { font-size: 0.75em; color: #666; margin-bottom: 4px; padding-left: 5px; border-left: 2px solid #22C55E; }
+        
         #log-overlay { 
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: rgba(0,0,0,0.85); z-index: 200; padding: 20px; box-sizing: border-box;
@@ -46,40 +46,48 @@
         table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.8em; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background: #f8f8f8; position: sticky; top: 0; }
-
-        .timeline-container { display: flex; align-items: center; gap: 15px; margin-top: 5px; }
-        #timeSlider { flex-grow: 1; }
-        .report-text { font-weight: bold; margin-top: 10px; font-size: 0.85em; text-align: center; }
     </style>
 </head>
 <body>
 
     <div id="input-panel" class="panel">
-        <h3><div id="status-light"></div> Variables & Inputs</h3>
+        <h3><div id="status-light"></div> Lab Variables</h3>
         
-        <label>Detergent Brand</label>
-        <select id="i-brand" style="padding: 4px;">
+        <label>Simulation Mode (Random Error)</label>
+        <select id="i-mode" style="background: #fff4f4; border: 1px solid #c2185b;">
+            <option value="ideal">Idealized (Clean Data)</option>
+            <option value="realistic">Realistic (Include Error)</option>
+        </select>
+
+        <label>Independent: Detergent Brand</label>
+        <select id="i-brand">
             <option value="Control">None (Control)</option>
             <option value="Tide">Tide (Conventional)</option>
             <option value="SeventhGen">Seventh Gen (Plant-Based)</option>
+            <option value="Generic">Generic Industrial</option>
         </select>
 
-        <label>Concentration</label>
-        <select id="i-pol" style="padding: 4px;">
+        <label>Independent: Concentration (%)</label>
+        <select id="i-pol">
             <option value="0">0%</option>
             <option value="0.1">0.1%</option>
             <option value="0.25">0.25%</option>
             <option value="0.5">0.5%</option>
         </select>
 
-        <label>Surfactant Composition: <span id="v-surf">15</span>%</label>
+        <label>Surfactant Ratio: <span id="v-surf">15</span>%</label>
         <input type="range" id="i-surf" min="0" max="40" value="15">
 
-        <div style="border-top: 1px solid #ddd; margin-top: 10px; padding-top: 5px;">
-            <label>Water (ml): <span id="v-water">50</span></label>
+        <div style="border-top: 1px solid #ddd; margin-top: 12px; padding-top: 8px;">
+            <span class="control-tag">CONTROLLED VARIABLES (FIXED)</span>
+            <div class="fixed-val"><b>Species:</b> Raphanus sativus</div>
+            <div class="fixed-val"><b>Soil:</b> Standard Peat-Based Mix</div>
+            <div class="fixed-val"><b>Sunlight:</b> 12-Hour Cycle</div>
+            
+            <label>Fixed Water (ml): <span id="v-water">50</span></label>
             <input type="range" id="i-water" min="0" max="100" value="50">
 
-            <label>Temp (°C): <span id="v-temp">22</span></label>
+            <label>Fixed Temp (°C): <span id="v-temp">22</span></label>
             <input type="range" id="i-temp" min="0" max="40" value="22">
         </div>
 
@@ -87,15 +95,12 @@
         <button class="secondary" id="viewLogsBtn">VIEW FULL HISTORY</button>
         <button class="download-btn" id="downloadBtn">DOWNLOAD CSV</button>
         <button class="secondary" style="font-size:0.7em; background:#881337" onclick="clearData()">Wipe Lab Data</button>
-
-        <div class="disclaimer">
-            *Disclaimer: Results reflect comparative toxicity solely within the parameters of this specific simulated plant-based model. They do not represent overall environmental or human toxicity standards.
-        </div>
     </div>
 
     <div id="stats-panel" class="panel">
-        <h3>Live Analytics</h3>
+        <h3>Live Data (Dependent)</h3>
         <div class="stat-row"><span>DAY:</span><span id="d-day">0</span></div>
+        <div class="stat-row"><span>EXPOSURES:</span><span id="d-exposures">0</span></div>
         <div class="stat-row"><span>HEIGHT:</span><span id="d-height">0</span> cm</div>
         <div class="stat-row"><span>LEAF COUNT:</span><span id="d-leaves">0</span></div>
         <div class="stat-row"><span>HEALTH:</span><span id="d-health">100</span>%</div>
@@ -111,20 +116,19 @@
         </div>
         
         <div id="condition-report" class="report-text" style="color: #22C55E;">STATUS: OPTIMAL</div>
-        <div id="daily-report">Awaiting log...</div>
+        <div id="daily-report">System initialized. Awaiting log...</div>
     </div>
 
     <div id="log-overlay">
         <div class="log-content">
             <div style="display:flex; justify-content: space-between; align-items: center;">
-                <h2>Lab Notebook: Toxicity Comparison</h2>
+                <h2>Lab Notebook: Toxicity Results</h2>
                 <button onclick="document.getElementById('log-overlay').style.display='none'" style="width:100px;">CLOSE</button>
             </div>
             <table>
                 <thead>
                     <tr>
-                        <th>Day</th><th>Brand</th><th>Conc.</th><th>Surf.%</th>
-                        <th>Height</th><th>Leaves</th><th>Color(1-5)</th><th>Score</th><th>Notes</th>
+                        <th>Day</th><th>Exposures</th><th>Brand</th><th>Conc.</th><th>Height</th><th>Leaves</th><th>Color</th><th>Score</th><th>Biological Feedback</th>
                     </tr>
                 </thead>
                 <tbody id="log-body"></tbody>
@@ -148,8 +152,8 @@
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        let history = JSON.parse(localStorage.getItem('radish_comparative_v1')) || [
-            { day: 0, growth: 0, health: 1, height: 0, leaves: 0, color: "#22C55E", leafHex: "#2E7D32", rating: 5, cond: "Healthy", ph: "7.0", turb: "Clear", score: 0, brand: "Control", conc: "0%", surf: 0, report: "Trial initialized." }
+        let history = JSON.parse(localStorage.getItem('radish_comparative_v2')) || [
+            { day: 0, exposures: 0, growth: 0.1, health: 1, height: 0, leaves: 0, color: "#22C55E", leafHex: "#2E7D32", rating: 5, cond: "Healthy", ph: "7.0", turb: "Clear", score: 0, brand: "Control", conc: "0%", surf: 0, report: "Trial started." }
         ];
 
         const scene = new THREE.Scene();
@@ -174,10 +178,12 @@
         let leafMeshes = [];
 
         function updatePlantVisuals(state) {
-            const s = state.growth * 1.5 + 0.01;
-            bulb.scale.set(s, s * 1.2, s); bulb.position.y = state.growth * 0.5;
-            leafMeshes.forEach(l => plantGroup.remove(l)); leafMeshes = [];
-            
+            if(!state) return;
+            const s = (state.growth || 0.1) * 1.5;
+            bulb.scale.set(s, s * 1.2, s); 
+            bulb.position.y = (state.growth || 0.1) * 0.5;
+            leafMeshes.forEach(l => plantGroup.remove(l)); 
+            leafMeshes = [];
             for(let i=0; i < state.leaves; i++) {
                 const lGroup = new THREE.Group();
                 const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, 1.2), new THREE.MeshStandardMaterial({color: 0x4caf50}));
@@ -185,12 +191,13 @@
                 blade.scale.set(1, 0.1, 1.8); blade.position.y = 1; stem.position.y = 0.5;
                 lGroup.add(stem); lGroup.add(blade);
                 lGroup.rotation.y = (i / state.leaves) * Math.PI * 2;
-                lGroup.rotation.z = 0.3 + (1 - state.health) * 1.5; // Droop
-                lGroup.position.y = bulb.position.y + 0.1; lGroup.scale.set(s, s, s);
+                lGroup.rotation.z = 0.3 + (1 - state.health) * 1.5;
+                lGroup.position.y = bulb.position.y + 0.1; 
+                lGroup.scale.set(s, s, s);
                 plantGroup.add(lGroup); leafMeshes.push(lGroup);
             }
-            
             document.getElementById('d-day').innerText = state.day;
+            document.getElementById('d-exposures').innerText = state.exposures;
             document.getElementById('d-height').innerText = state.height;
             document.getElementById('d-leaves').innerText = state.leaves;
             document.getElementById('d-health').innerText = Math.round(state.health * 100);
@@ -199,11 +206,9 @@
             document.getElementById('d-ph').innerText = state.ph;
             document.getElementById('d-turb').innerText = state.turb;
             document.getElementById('d-score').innerText = state.score;
-
             document.getElementById('leaf-preview').style.backgroundColor = state.leafHex;
             document.getElementById('slider-day').innerText = "Day " + state.day;
             document.getElementById('daily-report').innerText = state.report;
-            
             const color = state.color || "#22C55E";
             document.getElementById('status-light').style.backgroundColor = color;
             document.getElementById('input-panel').style.borderColor = color;
@@ -216,52 +221,48 @@
             const last = history[history.length - 1];
             if (last.health <= 0) return alert("Specimen has expired.");
 
+            const mode = document.getElementById('i-mode').value;
             const brand = document.getElementById('i-brand').value;
             const p = parseFloat(document.getElementById('i-pol').value);
             const surf = parseFloat(document.getElementById('i-surf').value);
             const w = parseFloat(document.getElementById('i-water').value);
             const t = parseFloat(document.getElementById('i-temp').value);
 
-            // SIMULATION SCIENCE: Toxicity is driven purely by composition, not brand assumptions.
-            // Effective toxicity = Concentration * (Surfactant Ratio / 100)
-            const effectiveToxicity = (brand === "Control" || p === 0) ? 0 : p * (surf / 100);
+            // Error Logic: Random fluctuations if "Realistic" is selected
+            let errorFactor = (mode === 'realistic') ? (Math.random() * 0.06 - 0.03) : 0; // +/- 3%
             
-            const healthImpact = (effectiveToxicity * 3.5) + (Math.abs(22-t) > 12 ? 0.08 : 0) + (w < 20 ? 0.05 : 0);
+            const isExposed = (brand !== "Control" && p > 0);
+            const totalExposures = (last.exposures || 0) + (isExposed ? 1 : 0);
+            const freqMult = 1 + (totalExposures * 0.15);
+            const effectiveToxicity = (brand === "Control" || p === 0) ? 0 : p * (surf / 100) * freqMult;
+            
+            const healthImpact = (effectiveToxicity * 4.0) + (Math.abs(22-t) > 10 ? 0.05 : 0) + (w < 30 ? 0.05 : 0) + errorFactor;
             const newHealth = Math.max(0, last.health - healthImpact);
-            
-            const growthDelta = (w/100) * (1 - effectiveToxicity*2) * 0.12;
-            const newGrowth = Math.max(0, Math.min(1, last.growth + growthDelta));
+            const growthDelta = ((w/100) * (1 - effectiveToxicity*3) * 0.15) + (errorFactor * 0.5);
+            const newGrowth = Math.max(0.05, Math.min(1.2, last.growth + growthDelta));
 
-            // Generate Output Variables
             const newHeight = (newGrowth * 18).toFixed(1);
-            const newLeaves = Math.max(0, Math.floor(newGrowth * 10) - (newHealth < 0.3 ? 2 : 0)); // Leaves drop off if dying
-            
+            const newLeaves = Math.max(0, Math.floor(newGrowth * 10) - (newHealth < 0.4 ? 3 : 0)); 
             const rating = Math.max(1, Math.ceil(newHealth * 5));
-            let cond = "Healthy";
-            if(newHealth < 0.4) cond = "Wilting/Spots";
-            else if(newHealth < 0.8) cond = "Dry Edges";
+            let cond = newHealth < 0.3 ? "Wilting/Necrosis" : (newHealth < 0.7 ? "Chlorotic Spots" : "Healthy");
 
-            const phCalc = 7.0 + (effectiveToxicity * 8); // Surfactants increase alkalinity
-            const turbCalc = effectiveToxicity === 0 ? "Clear" : (effectiveToxicity > 0.05 ? "Opaque" : "Cloudy");
+            const phCalc = 7.0 + (effectiveToxicity * 10) + (mode === 'realistic' ? (Math.random() * 0.4 - 0.2) : 0); 
+            const turbCalc = effectiveToxicity === 0 ? "Clear" : (effectiveToxicity > 0.08 ? "Opaque" : "Cloudy");
             const toxScore = Math.round((1 - newHealth) * 100);
 
-            // Report logic
-            let pDesc = effectiveToxicity > 0 ? `Surfactant presence (${surf}%) altered water to pH ${phCalc.toFixed(1)}, causing tissue stress.` : "Control conditions maintained cell integrity.";
-            let hDesc = newHealth < 0.5 ? "Chlorosis and leaf shedding observed." : "Vascular systems functioning normally.";
-
-            let reportColor = "#22C55E"; 
-            if (newHealth < 0.4) reportColor = "#EF4444"; 
-            else if (newHealth < 0.8) reportColor = "#FACC15";
+            let feedback = brand === "Control" ? `Day ${last.day + 1}: Control group observation.` : `Day ${last.day + 1}: Treated with ${brand}. pH at ${phCalc.toFixed(1)}.`;
+            if(mode === 'realistic') feedback += " [Variability Applied]";
 
             history.push({
-                day: last.day + 1, brand: brand, conc: p+"%", surf: surf,
+                day: last.day + 1, exposures: totalExposures, brand: brand, conc: p+"%", surf: surf,
                 growth: newGrowth, health: newHealth, height: newHeight, leaves: newLeaves,
-                color: reportColor, leafHex: "#" + new THREE.Color(0x2e7d32).lerp(new THREE.Color(0x8d6e63), 1 - newHealth).getHexString(),
+                color: newHealth < 0.4 ? "#EF4444" : (newHealth < 0.7 ? "#FACC15" : "#22C55E"), 
+                leafHex: "#" + new THREE.Color(0x2e7d32).lerp(new THREE.Color(0x8d6e63), 1 - newHealth).getHexString(),
                 rating: rating, cond: cond, ph: phCalc.toFixed(1), turb: turbCalc, score: toxScore,
-                report: `${pDesc} ${hDesc}`
+                report: feedback
             });
 
-            localStorage.setItem('radish_comparative_v1', JSON.stringify(history));
+            localStorage.setItem('radish_comparative_v2', JSON.stringify(history));
             document.getElementById('timeSlider').max = history.length - 1;
             document.getElementById('timeSlider').value = history.length - 1;
             updatePlantVisuals(history[history.length - 1]);
@@ -269,32 +270,24 @@
 
         document.getElementById('viewLogsBtn').onclick = () => {
             const body = document.getElementById('log-body');
-            body.innerHTML = history.map(h => `<tr>
-                <td>${h.day}</td><td>${h.brand}</td><td>${h.conc}</td><td>${h.surf}%</td>
-                <td>${h.height}</td><td>${h.leaves}</td><td>${h.rating}</td><td><b>${h.score}</b></td><td>${h.report}</td>
-            </tr>`).join('');
+            body.innerHTML = history.map(h => `<tr><td>${h.day}</td><td>${h.exposures}</td><td>${h.brand}</td><td>${h.conc}</td><td>${h.height}</td><td>${h.leaves}</td><td>${h.rating}</td><td><b>${h.score}</b></td><td>${h.report}</td></tr>`).join('');
             document.getElementById('log-overlay').style.display = 'block';
         };
 
         document.getElementById('downloadBtn').onclick = () => {
-            let csv = "Day,Brand,Concentration,Surfactant(%),Height(cm),Leaves,Health(%),ColorRating,Score,pH,Turbidity,Notes\n";
-            history.forEach(h => { csv += `${h.day},${h.brand},${h.conc},${h.surf},${h.height},${h.leaves},${Math.round(h.health*100)},${h.rating},${h.score},${h.ph},${h.turb},"${h.report}"\n`; });
+            let csv = "Day,Exposures,Brand,Conc,Surf,Height,Leaves,Health,Rating,Score,pH,Turbidity,Notes\n";
+            history.forEach(h => { csv += `${h.day},${h.exposures},${h.brand},${h.conc},${h.surf},${h.height},${h.leaves},${Math.round(h.health*100)},${h.rating},${h.score},${h.ph},${h.turb},"${h.report}"\n`; });
             const blob = new Blob([csv], { type: 'text/csv' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = "comparative_toxicity_data.csv";
-            a.click();
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "toxicity_report.csv"; a.click();
         };
 
-        window.clearData = () => { if(confirm("Delete all history?")) { localStorage.clear(); location.reload(); } };
-        
+        window.clearData = () => { if(confirm("Wipe all data?")) { localStorage.clear(); location.reload(); } };
         ['water', 'temp', 'surf'].forEach(id => {
             document.getElementById('i-'+id).oninput = (e) => document.getElementById('v-'+id).innerText = e.target.value;
         });
-
         document.getElementById('timeSlider').oninput = (e) => updatePlantVisuals(history[e.target.value]);
         document.getElementById('timeSlider').max = history.length - 1;
-        updatePlantVisuals(history[history.length - 1]);
+        setTimeout(() => updatePlantVisuals(history[history.length - 1]), 100);
         function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
         animate();
     </script>
