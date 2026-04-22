@@ -42,8 +42,6 @@
 
         .stat-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; border-bottom: 1px solid #ddd; padding-bottom: 2px; font-size: 0.85em; }
         .color-preview { width: 12px; height: 12px; border: 1px solid #333; display: inline-block; vertical-align: middle; margin-right: 4px; }
-        
-        /* ADJUSTED REPORT AREA FOR 3 SENTENCES */
         #daily-report { margin-top: 10px; font-size: 0.75em; color: #222; font-weight: 500; line-height: 1.5; border-top: 2px solid #eee; padding-top: 8px; min-height: 60px; }
 
         .control-tag { font-size: 0.7em; color: #15803d; background: #dcfce7; padding: 2px 6px; border-radius: 3px; display: inline-block; margin-bottom: 5px; font-weight: bold; }
@@ -81,7 +79,11 @@
                 <option value="Partly Sunny">Partly Sunny</option>
                 <option value="Cloudy">Cloudy</option>
                 <option value="Broken Clouds">Broken Clouds</option>
+                <option value="Fog">Fog</option>
+                <option value="Overcast">Overcast</option>
+                <option value="Heatwave">Heatwave</option>
                 <option value="Rain">Rain</option>
+                <option value="Storm">Storm</option>
             </select>
             <label><input type="checkbox" id="i-auto-weather"> Auto</label>
         </div>
@@ -180,8 +182,8 @@
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        let history = JSON.parse(localStorage.getItem('radish_comparative_v4')) || [
-            { day: 0, weather: "Sunny", exposures: 0, growth: 0.1, health: 1, height: 0, leaves: 0, color: "#22C55E", leafHex: "#2E7D32", rating: 5, cond: "Healthy", ph: "7.0", turb: "Clear", score: 0, brand: "Control", conc: "0%", surf: 0, report: "Trial initialized under standard conditions." }
+        let history = JSON.parse(localStorage.getItem('radish_comparative_v5')) || [
+            { day: 0, weather: "Sunny", exposures: 0, growth: 0.1, health: 1, height: 0, leaves: 0, color: "#22C55E", leafHex: "#2E7D32", rating: 5, cond: "Healthy", ph: "7.0", turb: "Clear", score: 0, brand: "Control", conc: "0%", surf: 0, report: "Trial initialized." }
         ];
 
         const scene = new THREE.Scene();
@@ -254,7 +256,7 @@
             let weather = document.getElementById('i-weather').value;
             const autoWeather = document.getElementById('i-auto-weather').checked;
             if (autoWeather) {
-                const weathers = ["Sunny", "Partly Sunny", "Cloudy", "Broken Clouds", "Rain"];
+                const weathers = ["Sunny", "Partly Sunny", "Cloudy", "Broken Clouds", "Fog", "Overcast", "Heatwave", "Rain", "Storm"];
                 weather = weathers[Math.floor(Math.random() * weathers.length)];
                 document.getElementById('i-weather').value = weather;
             }
@@ -269,20 +271,26 @@
             let errorFactor = (mode === 'realistic') ? (Math.random() * 0.06 - 0.03) : 0; 
             
             let weatherGrowthMod = 0;
+            let weatherHealthStress = 0;
             let pMod = p; 
             
+            // Expanded Weather Logic
             if (weather === "Sunny") weatherGrowthMod = 0.04;
             else if (weather === "Partly Sunny") weatherGrowthMod = 0.02;
             else if (weather === "Cloudy") weatherGrowthMod = -0.02;
             else if (weather === "Broken Clouds") weatherGrowthMod = -0.01;
+            else if (weather === "Fog") { weatherGrowthMod = -0.03; pMod = p * 0.95; }
+            else if (weather === "Overcast") weatherGrowthMod = -0.05;
+            else if (weather === "Heatwave") { weatherGrowthMod = -0.04; weatherHealthStress = 0.04; }
             else if (weather === "Rain") { weatherGrowthMod = 0.03; pMod = p * 0.6; }
+            else if (weather === "Storm") { weatherGrowthMod = 0.01; pMod = p * 0.4; weatherHealthStress = 0.03; }
 
             const isExposed = (brand !== "Control" && pMod > 0);
             const totalExposures = (last.exposures || 0) + (isExposed ? 1 : 0);
             const freqMult = 1 + (totalExposures * 0.15);
             const effectiveToxicity = (brand === "Control" || pMod === 0) ? 0 : pMod * (surf / 100) * freqMult;
             
-            const healthImpact = (effectiveToxicity * 4.0) + (Math.abs(22-t) > 10 ? 0.05 : 0) + (w < 30 ? 0.05 : 0) + errorFactor;
+            const healthImpact = (effectiveToxicity * 4.0) + (Math.abs(22-t) > 10 ? 0.05 : 0) + (w < 30 ? 0.05 : 0) + errorFactor + weatherHealthStress;
             const newHealth = Math.max(0, last.health - healthImpact);
             const growthDelta = ((w/100) * (1 - effectiveToxicity*3) * 0.15) + (errorFactor * 0.5) + weatherGrowthMod;
             const newGrowth = Math.max(0.05, Math.min(1.2, last.growth + growthDelta));
@@ -293,21 +301,21 @@
             let cond = newHealth < 0.3 ? "Wilting/Necrosis" : (newHealth < 0.7 ? "Chlorotic Spots" : "Healthy");
 
             let rawPh = 7.0 + (effectiveToxicity * 10) + (mode === 'realistic' ? (Math.random() * 0.4 - 0.2) : 0);
-            if (weather === "Rain" && brand !== "Control") rawPh -= (rawPh - 7.0) * 0.3; 
+            if ((weather === "Rain" || weather === "Storm") && brand !== "Control") rawPh -= (rawPh - 7.0) * 0.4; 
             const phCalc = rawPh;
 
             let turbCalc = effectiveToxicity === 0 ? "Clear" : (effectiveToxicity > 0.08 ? "Opaque" : "Cloudy");
             const toxScore = Math.round((1 - newHealth) * 100);
 
             // 3-SENTENCE FEEDBACK LOGIC
-            let s1 = `On Day ${last.day + 1}, the specimen experienced ${weather} conditions while being observed in the ${brand} test group. `;
-            let s2 = `The plant's vertical growth reached ${newHeight} cm with a health rating of ${Math.round(newHealth * 100)}%, clearly reflecting the biological impact of the ${p}% concentration. `;
-            let s3 = `Vascular stress is currently ${newHealth < 0.7 ? 'elevated' : 'minimal'} due to the pH levels of ${phCalc.toFixed(1)} and the ${surf}% surfactant ratio interacting with the soil substrate.`;
+            let s1 = `On Day ${last.day + 1}, the specimen was subjected to ${weather} weather within the ${brand} experimental block. `;
+            let s2 = `Recorded growth reached ${newHeight} cm, while the biological vitality index settled at ${Math.round(newHealth * 100)}% due to the ${p}% chemical concentration. `;
+            let s3 = `The root zone currently exhibits a pH of ${phCalc.toFixed(1)}, showing ${weatherHealthStress > 0 ? 'increased' : 'stable'} environmental stress from the ${weather} conditions.`;
             
             if (brand === "Control") {
-                s1 = `On Day ${last.day + 1}, the control specimen continued its development under ${weather} skies without chemical intervention. `;
-                s2 = `Growth remains stable at ${newHeight} cm with ${newLeaves} healthy leaves, confirming the baseline vitality of the Raphanus sativus. `;
-                s3 = `Maintaining a neutral pH of ${phCalc.toFixed(1)} ensures that nutrient uptake remains optimal and unaffected by experimental stressors.`;
+                s1 = `On Day ${last.day + 1}, the control group maintained a natural growth cycle under ${weather} conditions. `;
+                s2 = `Specimen height has progressed to ${newHeight} cm, showing ${newLeaves} primary leaves and a robust health profile. `;
+                s3 = `Water quality remains neutral at pH ${phCalc.toFixed(1)}, as the plant is shielded from the ${surf}% surfactant stress found in other trials.`;
             }
 
             const feedback = s1 + s2 + s3;
@@ -321,7 +329,7 @@
                 report: feedback
             });
 
-            localStorage.setItem('radish_comparative_v4', JSON.stringify(history));
+            localStorage.setItem('radish_comparative_v5', JSON.stringify(history));
             document.getElementById('timeSlider').max = history.length - 1;
             document.getElementById('timeSlider').value = history.length - 1;
             updatePlantVisuals(history[history.length - 1]);
@@ -337,7 +345,7 @@
             let csv = "Day,Weather,Exposures,Brand,Conc,Surf,Height,Leaves,Health,Rating,Score,pH,Turbidity,Notes\n";
             history.forEach(h => { csv += `${h.day},${h.weather},${h.exposures},${h.brand},${h.conc},${h.surf},${h.height},${h.leaves},${Math.round(h.health*100)},${h.rating},${h.score},${h.ph},${h.turb},"${h.report}"\n`; });
             const blob = new Blob([csv], { type: 'text/csv' });
-            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "toxicity_report_v4.csv"; a.click();
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "toxicity_report_v5.csv"; a.click();
         };
 
         window.clearData = () => { if(confirm("Wipe all data?")) { localStorage.clear(); location.reload(); } };
